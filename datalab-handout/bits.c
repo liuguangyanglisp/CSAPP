@@ -289,40 +289,41 @@ int logicalNeg(int x) {
  *  Rating: 4
  */
 int howManyBits(int x) {
-  /*if s = 0, which means this bit is nonzero.*/
-  int s31 = !x>>31;
-  int s30 = !x>>30;
-  int s29 = !x>>29;
-  int s28 = !x>>28;
-  int s27 = !x>>27;
-  int s26 = !x>>26;
-  int s25 = !x>>25;
-  int s24 = !x>>24;
-  int s23 = !x>>23;
-  int s22 = !x>>22;
-  int s21 = !x>>21;
-  int s20 = !x>>20;
-  int s19 = !x>>19;
-  int s18 = !x>>18;
-  int s17 = !x>>17;
-  int s16 = !x>>16;
-  int s15 = !x>>15;
-  int s14 = !x>>14;
-  int s13 = !x>>13;
-  int s12 = !x>>12;
-  int s11 = !x>>11;
-  int s10 = !x>>10;
-  int s9 = !x>>9;
-  int s8 = !x>>8;
-  int s7 = !x>>7;
-  int s6 = !x>>6;
-  int s5 = !x>>5;
-  int s4 = !x>>4;
-  int s3 = !x>>3;
-  int s2 = !x>>2;
-  int s1 = !x>>1;
-  int num = s1+s2+s3+s4+s5+s6+s7+s8+s9+s10+s11+s12+s13+s14+s15+s16+s17+s18+s19+s20+s21+s22+s23+s24+s25+s26+s27+s28+s29+s30+s31;
-  int subnum = 32+ ~num + 1;
+  int sign = x>>31;
+  x = (x&(~sign)) | ((~x)&sign);
+  
+  int s30 = !(x>>30);
+  int s29 = !(x>>29);
+  int s28 = !(x>>28);
+  int s27 = !(x>>27);
+  int s26 = !(x>>26);
+  int s25 = !(x>>25);
+  int s24 = !(x>>24);
+  int s23 = !(x>>23);
+  int s22 = !(x>>22);
+  int s21 = !(x>>21);
+  int s20 = !(x>>20);
+  int s19 = !(x>>19);
+  int s18 = !(x>>18);
+  int s17 = !(x>>17);
+  int s16 = !(x>>16);
+  int s15 = !(x>>15);
+  int s14 = !(x>>14);
+  int s13 = !(x>>13);
+  int s12 = !(x>>12);
+  int s11 = !(x>>11);
+  int s10 = !(x>>10);
+  int s9 = !(x>>9);
+  int s8 = !(x>>8);
+  int s7 = !(x>>7);
+  int s6 = !(x>>6);
+  int s5 = !(x>>5);
+  int s4 = !(x>>4);
+  int s3 = !(x>>3);
+  int s2 = !(x>>2);
+  int s1 = !(x>>1);
+  int num = s1+s2+s3+s4+s5+s6+s7+s8+s9+s10+s11+s12+s13+s14+s15+s16+s17+s18+s19+s20+s21+s22+s23+s24+s25+s26+s27+s28+s29+s30;
+  int subnum = 32+(~num)+ !(!x);
   return subnum;
 }
 //float
@@ -338,7 +339,47 @@ int howManyBits(int x) {
  *   Rating: 4
  */
 unsigned floatScale2(unsigned uf) {
-  return 2;
+  /*if uf = 0, return uf. */
+  if (!uf || !(uf+uf))
+  {
+    return uf;
+  }
+
+  unsigned sign = uf&(1<<31);
+  unsigned ex = (uf>>23)&0xff;
+  unsigned exAreOne = !(ex+ (~255 + 1));
+  unsigned frarHelp = (~(0x1ff<<23));/*9zeros, 23ones*/
+  unsigned frac = frarHelp&uf;
+  unsigned newEx = ((ex+1)&0xff)<<23;
+  unsigned newFrac = frac;
+  unsigned newf = sign + newEx +newFrac;
+
+  /*1. normal, ex!=0 !=255*/
+
+  if (ex && !exAreOne)
+  {
+  return newf;
+  }
+
+  /*2. denormal, ex = 0. */
+  /*if ex not 0. */
+  newFrac = frac<<1;
+    /*if frac overflow, ex + 1. if not, still ex.*/
+  if (!(newFrac>>23))
+  {
+    newEx = ex;
+  }
+  newFrac = frarHelp&newFrac;
+  newf = sign + newEx +newFrac;
+
+
+  /*3. if arg is nan or infinity, return arg.*/
+  if (exAreOne)
+  {
+    return uf;
+  }
+
+  return newf;
 }
 /* 
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
@@ -353,7 +394,56 @@ unsigned floatScale2(unsigned uf) {
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
-  return 2;
+  unsigned sign = uf&(1<<31);
+  unsigned e = (uf>>23)&0xff;/*8 exp bits*/
+  unsigned exAreOne = !(e+ (~255 + 1));
+  unsigned fracHelp = (~(0x1ff<<23));/*9zeros, 23ones*/
+  unsigned frac = fracHelp&uf;
+  int bias = 127;
+  int E = e+(~bias+1);
+  unsigned twoPowerE = 1;
+
+   /*if e = 0, E<0, |float|<1, int = 0. */
+  if (!e || E>>31)
+  {
+    return 0;
+  }
+
+  /*if out of range, return 0x80000000u*/
+
+  int EbigThan30 = !((E+(~31+1))>>31);
+
+  if (exAreOne  || EbigThan30)
+  {
+    return 0x80000000u;
+  }
+
+  /*normal float values, e!=0 !=255, 0<=E<=30. */
+ while (E)
+    {
+      twoPowerE = twoPowerE<<1;/*evaluate 2^E. */
+      E = E-1;
+    }
+    
+    /*returnValue = (-1)^sing + (1+frac)*2^E. */
+    int returnValue = twoPowerE; 
+
+    int i = 23;
+    while (frac)
+    {
+      int fracBit = frac&1;
+      int fracBitValue = twoPowerE>>i; /*if fracbit*2^E <1, round to zero. */
+      if (fracBit || fracBitValue)
+      {
+        returnValue = returnValue + fracBitValue;
+      }
+      frac = frac>>1;
+      i = i-1;
+    }
+    if(sign) {
+      returnValue = ~returnValue + 1;/*if arg f is negative, return negate returnValue. */
+    }
+  return returnValue;
 }
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
@@ -369,9 +459,20 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-    return 2;
-}
+  unsigned e = (x+127)&0xff;
+  unsigned newe =e<<23;
+  unsigned returnValue = 0|newe;
+  int xBigThan127 = !((x+(~128+1))>>31);
+  int xlessThanN126 = (x+126)>>31;
+  if (xBigThan127)
+  {
+    return 0x7f800000;/*positive infinity. */
+  }
+  
+  if (xlessThanN126)
+  {
+    return 0;
+  }
 
-int main() {
-
+  return returnValue;
 }
