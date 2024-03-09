@@ -143,11 +143,11 @@ NOTES:
  *   Rating: 1
  */
 int bitXor(int x, int y) {
-  /*when x != y, bit is 1. Not sure what 0 represents now, maybe =, maybe !=.*/
+  /*bit value 0 means x != y. Not sure what 0 represents now, maybe =, maybe !=.*/
   int xAndNotY = x & ~y; 
   int yAndNotX = y & ~x;
 
-  /*0 represents x != y, 1 represents x = y. Combine to make sure every bit's meaning is clear. */
+  /*bit value 0 means x != y, 1 means x = y. Combine to make sure every bit's meaning is clear. */
   int flipAndCombine = ~xAndNotY & ~yAndNotX;
 
   return ~flipAndCombine; /*use not to flip bit, bit is 0 when x = y, bit is 1 when x != y. */
@@ -163,7 +163,6 @@ int bitXor(int x, int y) {
  */
 int tmin(void) {
   return 1 << 31;
-
 }
 //2
 /*
@@ -208,10 +207,6 @@ int allOddBits(int x) {
  *   Rating: 2
  */
 int negate(int x) {
-  /*if x is Tmin, negate x = ~ x, x + ~x = 0, x + ~x + 1 = 1.
-  else: negate x = ~x + 1, x + ~x + 1 = 0. */
-  /*int z = x + ~x + 1;
-  return ~x + !z*/
   return ~x + 1;
 }
 //3
@@ -225,12 +220,9 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  int Tmin = 1<<31;
-  int xsub30 = (x+(~0x30+1))&Tmin;
-  int xsub39 = !((x+(~0x39+1+~1+1))&Tmin);
-  int xbigthan0 = x&Tmin;
-  int or = xsub30 | xsub39 | xbigthan0;
-  return !or;
+  int xbigThan30 = !((x+(~0x30+1))>>31);
+  int xlessThan39 = (x+(~0x3a+1))>>31;
+  return xbigThan30&xlessThan39;
 }
 /* 
  * conditional - same as x ? y : z 
@@ -241,7 +233,7 @@ int isAsciiDigit(int x) {
  */
 int conditional(int x, int y, int z) {
   /*if x is false, return z, else return y.*/
-  int isfalse = !x; 
+  int isfalse = !x; /*if x is false, return 1.*/
   int all_1or0 = (isfalse<<31)>>31;/*if x is false, return all 1. else all 0.*/
   int returnValue = (all_1or0 | y) & (~all_1or0 | z);
   return returnValue;
@@ -254,9 +246,9 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  int ysubx = y + (~x + 1);
-  int sub_morethan0 = !(ysubx & (1<<31));
-  return sub_morethan0;
+  /*if x<=y, then y-x>=0, LMB is 0, !LMB=1.*/
+ int ybigThanx = !((y+(~x+1))>>31);
+  return ybigThanx;
 }
 //4
 /* 
@@ -268,13 +260,16 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
+  /*divide orgin bits into two parts, and use | operation.
+  do this iteratively until can't divide.
+  32-16-8-4-2-1.
+  if x is 0, last bit is 0. if x is not 0, last bit is 1.*/
   int and_16bits = (x>>16) | x;
   int and_8bits = (and_16bits>>8) | and_16bits;
   int and_4bits = (and_8bits>>4) | and_8bits;
   int and_2bits = (and_4bits>>2) | and_4bits;
   int and_1bits = (and_2bits>>1) | and_2bits;
-  int lastbitValue = and_1bits & 1;
-  return (~lastbitValue) + 2;
+  return (~and_1bits)&1;/*if last bit is 1,return 0. if last bit is 0, return 1.*/
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
@@ -289,42 +284,49 @@ int logicalNeg(int x) {
  *  Rating: 4
  */
 int howManyBits(int x) {
+  int min,half,help;
   int sign = x>>31;
-  x = (x&(~sign)) | ((~x)&sign);
+  x = (x&(~sign)) | ((~x)&sign);/*if x is negative, its minimum bits is ~x's minimum bits.*/
+
+  /*algorithm:
+  step1: given none negative x, divide x into two parts, half reprents left part. 
+  if left > 0, minium bits = bits of right(alredy know) + minium bits of (x = left parts).
+  if left = 0, minium bits = minium bits of (x = right parst).
+  calculate according step1 until x = 1 bit, can't divide. */
+
+  /**/
+  half = x>>16;
+  help = ((!!half)<<31)>>31;/*help method to decide: if assign value to min or, assign witch part to x and do step next. */
+  min = 16&help;/*use min to store number of bits.*/
+  x = (half&help) | ((x&(~((~0<<16))))&(~help)); /*x = left part or right part.*/
   
-  int s30 = !(x>>30);
-  int s29 = !(x>>29);
-  int s28 = !(x>>28);
-  int s27 = !(x>>27);
-  int s26 = !(x>>26);
-  int s25 = !(x>>25);
-  int s24 = !(x>>24);
-  int s23 = !(x>>23);
-  int s22 = !(x>>22);
-  int s21 = !(x>>21);
-  int s20 = !(x>>20);
-  int s19 = !(x>>19);
-  int s18 = !(x>>18);
-  int s17 = !(x>>17);
-  int s16 = !(x>>16);
-  int s15 = !(x>>15);
-  int s14 = !(x>>14);
-  int s13 = !(x>>13);
-  int s12 = !(x>>12);
-  int s11 = !(x>>11);
-  int s10 = !(x>>10);
-  int s9 = !(x>>9);
-  int s8 = !(x>>8);
-  int s7 = !(x>>7);
-  int s6 = !(x>>6);
-  int s5 = !(x>>5);
-  int s4 = !(x>>4);
-  int s3 = !(x>>3);
-  int s2 = !(x>>2);
-  int s1 = !(x>>1);
-  int num = s1+s2+s3+s4+s5+s6+s7+s8+s9+s10+s11+s12+s13+s14+s15+s16+s17+s18+s19+s20+s21+s22+s23+s24+s25+s26+s27+s28+s29+s30;
-  int subnum = 32+(~num)+ !(!x);
-  return subnum;
+  half = x>>8;
+  help = ((!!half)<<31)>>31;
+  min = min + (8&help);
+  x = (half&help) | ((x&0xff)&(~help));
+
+
+  half = x>>4;
+  help = ((!!half)<<31)>>31;
+  min = min + (4&help);
+  x = (half&help) | ((x&0xf)&(~help));
+
+  
+  half = x>>2;
+  help = ((!!half)<<31)>>31;
+  min = min + (2&help);
+  x = (half&help) | ((x&0x3)&(~help));
+
+  
+  half = x>>1;
+  help = ((!!half)<<31)>>31;
+  min = min + (1&help);
+  x = (half&help) | ((x&0x1)&(~help));
+
+  half = x;/*half = last bit, can't divide. */
+  min = min + !!half;
+
+  return min+1;/*if x = 0, min might be 0 according calculation above, we need at least 1 bit to represent 0. */
 }
 //float
 /* 
@@ -339,45 +341,36 @@ int howManyBits(int x) {
  *   Rating: 4
  */
 unsigned floatScale2(unsigned uf) {
-  /*if uf = 0, return uf. */
-  if (!uf || !(uf+uf))
+  unsigned sign = uf&(1<<31);
+  unsigned e = (uf>>23)&0xff;
+  unsigned eAreOne = !(e-255);/*!(e+ (~255 + 1))*/
+  unsigned frarHelp = (~(0x1ff<<23));/*9zeros, 23ones*/
+  unsigned frac = uf&frarHelp;
+  unsigned newe = ((e+1)&0xff)<<23;
+  unsigned newFrac = frac;
+  unsigned newf = sign + newe +newFrac;
+
+  /*if uf = +-0, return uf. */
+  /*e are ones, which represents NaN or infinity(e are ones), return arg.*/
+  if (!(uf+uf) || eAreOne)
   {
     return uf;
   }
 
-  unsigned sign = uf&(1<<31);
-  unsigned ex = (uf>>23)&0xff;
-  unsigned exAreOne = !(ex+ (~255 + 1));
-  unsigned frarHelp = (~(0x1ff<<23));/*9zeros, 23ones*/
-  unsigned frac = frarHelp&uf;
-  unsigned newEx = ((ex+1)&0xff)<<23;
-  unsigned newFrac = frac;
-  unsigned newf = sign + newEx +newFrac;
-
-  /*1. normal, ex!=0 !=255*/
-
-  if (ex && !exAreOne)
+  /*Normal, e!=0, !=255*/
+  if (e)
   {
   return newf;
   }
 
-  /*2. denormal, ex = 0. */
-  /*if ex not 0. */
-  newFrac = frac<<1;
-    /*if frac overflow, ex + 1. if not, still ex.*/
-  if (!(newFrac>>23))
+  /*Denormal, e = 0. */
+  newFrac = frac<<1;/*arg f*2 = frac<<1.*/
+  if (!(newFrac>>23))/*if frac overflow, newe = e + 1. if not, newe = e.*/
   {
-    newEx = ex;
-  }
-  newFrac = frarHelp&newFrac;
-  newf = sign + newEx +newFrac;
-
-
-  /*3. if arg is nan or infinity, return arg.*/
-  if (exAreOne)
-  {
-    return uf;
-  }
+    newe = 0;
+  }  
+  newFrac = newFrac&frarHelp;
+  newf = sign + newe +newFrac;
 
   return newf;
 }
@@ -396,47 +389,34 @@ unsigned floatScale2(unsigned uf) {
 int floatFloat2Int(unsigned uf) {
   unsigned sign = uf&(1<<31);
   unsigned e = (uf>>23)&0xff;/*8 exp bits*/
-  unsigned exAreOne = !(e+ (~255 + 1));
+  unsigned eAreOne = !(e-255);/*!(e+ (~255 + 1))*/
   unsigned fracHelp = (~(0x1ff<<23));/*9zeros, 23ones*/
-  unsigned frac = fracHelp&uf;
-  int bias = 127;
-  int E = e+(~bias+1);
-  unsigned twoPowerE = 1;
+  unsigned frac =uf&fracHelp;
+  int E = e-127;/*e+(~127+1).*/
+  unsigned twoPowerE = 1<<E;/*evaluate 2^E. */
+  int returnValue = twoPowerE; /*returnValue = (-1)^sign + (1+frac)*2^E. */
+  int i = 23;/*count frac bits.*/
+  int EbigThan30 = (30+(~E+1))>>31;/*30-E<0. */
 
-   /*if e = 0, E<0, |float|<1, int = 0. */
+   /*if e = 0, then E<0, |float|<1, return int value = 0. */
   if (!e || E>>31)
   {
     return 0;
   }
 
-  /*if out of range, return 0x80000000u*/
+  /*if out of range(Nan, infinity, E>30. ), return 0x80000000u*/
+  
 
-  int EbigThan30 = !((E+(~31+1))>>31);
-
-  if (exAreOne  || EbigThan30)
+  if (eAreOne  || EbigThan30)
   {
     return 0x80000000u;
   }
 
-  /*normal float values, e!=0 !=255, 0<=E<=30. */
- while (E)
-    {
-      twoPowerE = twoPowerE<<1;/*evaluate 2^E. */
-      E = E-1;
-    }
-    
-    /*returnValue = (-1)^sing + (1+frac)*2^E. */
-    int returnValue = twoPowerE; 
-
-    int i = 23;
+  /*normal float values, e!=0 !=255, 0<=E<=30. */ 
     while (frac)
     {
-      int fracBit = frac&1;
       int fracBitValue = twoPowerE>>i; /*if fracbit*2^E <1, round to zero. */
-      if (fracBit || fracBitValue)
-      {
-        returnValue = returnValue + fracBitValue;
-      }
+      returnValue = returnValue + fracBitValue;
       frac = frac>>1;
       i = i-1;
     }
@@ -459,20 +439,32 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-  unsigned e = (x+127)&0xff;
+  unsigned e = x+127;
   unsigned newe =e<<23;
-  unsigned returnValue = 0|newe;
-  int xBigThan127 = !((x+(~128+1))>>31);
+  unsigned returnValue = 0|newe;  
+  int xBigThan127 = (127-x)>>31;
+  int xlessThanN149 = (x+149)>>31;
   int xlessThanN126 = (x+126)>>31;
+  unsigned frac = 1<<24;
+  int i = -126-x;
+
+  /*too big*/
   if (xBigThan127)
   {
-    return 0x7f800000;/*positive infinity. */
+    return 0x7f800000u;/*positive infinity. */
   }
-  
-  if (xlessThanN126)
+  /*too small*/
+  if (xlessThanN149)
   {
     return 0;
   }
 
+  /*denormal: -149<=x<=-126*/
+  if (xlessThanN126)
+  {
+  return frac>>i;
+  }
+
+  /*normal: -126<=x<=127*/
   return returnValue;
 }
